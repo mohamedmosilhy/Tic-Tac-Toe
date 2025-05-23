@@ -1,154 +1,147 @@
-function createGameBoard() {
-  let cells = [
-    [null, null, null],
-    [null, null, null],
-    [null, null, null],
-  ];
-  return { cells };
-}
+// GameBoard Module
+const createGameBoard = (() => {
+  let board = Array(3)
+    .fill(null)
+    .map(() => Array(3).fill(null));
 
-function createPlayer(name, symbol) {
-  return { name, symbol };
-}
+  const reset = () => {
+    board = Array(3)
+      .fill(null)
+      .map(() => Array(3).fill(null));
+  };
 
-function createGameController(gameBoard, player1, player2) {
-  let board = gameBoard.cells;
-  let endGame = false;
-  let turn = "player1";
-  let player1Controller = player1;
-  let player2Controller = player2;
+  const setCell = (row, col, symbol) => {
+    if (!board[row][col]) {
+      board[row][col] = symbol;
+      return true;
+    }
+    return false;
+  };
 
-  const printBoard = () => {
-    console.log("\nCurrent board:");
-    board.forEach((row) => {
-      console.log(row.map((cell) => cell || "_").join(" "));
+  const getBoard = () => board;
+
+  return { reset, setCell, getBoard };
+})();
+
+// Player Factory
+const createPlayer = (symbol) => {
+  return { symbol };
+};
+
+// Display Controller Module
+const displayController = (() => {
+  const newGameButton = document.querySelector(".new-game-button");
+  const cells = Array.from(document.querySelectorAll(".grid-cell"));
+  const message = document.querySelector(".message");
+
+  const clearBoard = () => {
+    cells.forEach((cell) => (cell.textContent = ""));
+  };
+
+  const updateCell = (row, col, content) => {
+    const cell = document.querySelector(`[data-pos="${row}_${col}"]`);
+    if (cell) cell.textContent = content;
+  };
+
+  const bindCellClick = (callback) => {
+    cells.forEach((cell) => {
+      cell.addEventListener("click", () => {
+        const [row, col] = cell.dataset.pos.split("_").map(Number);
+        callback(row, col);
+      });
     });
   };
 
-  const checkWin = () => {
-    const size = board.length;
+  const showMessage = (text) => {
+    if (message) message.textContent = text;
+  };
 
-    // Rows
-    for (let row of board) {
-      if (row[0] !== null && row.every((val) => val === row[0])) {
-        endGame = true;
+  return { newGameButton, clearBoard, updateCell, bindCellClick, showMessage };
+})();
+
+// Game Controller Module
+const gameController = (() => {
+  const player1 = createPlayer("X");
+  const player2 = createPlayer("O");
+  let currentPlayer = player1;
+  let isGameOver = false;
+
+  const switchPlayer = () => {
+    currentPlayer = currentPlayer === player1 ? player2 : player1;
+  };
+
+  const checkWin = (board) => {
+    // Rows and Columns
+    for (let i = 0; i < 3; i++) {
+      if (
+        board[i][0] &&
+        board[i][0] === board[i][1] &&
+        board[i][1] === board[i][2]
+      )
         return true;
-      }
-    }
 
-    // Columns
-    for (let col = 0; col < size; col++) {
-      let first = board[0][col];
-      if (first !== null && board.every((row) => row[col] === first)) {
-        endGame = true;
+      if (
+        board[0][i] &&
+        board[0][i] === board[1][i] &&
+        board[1][i] === board[2][i]
+      )
         return true;
-      }
     }
 
-    // Main diagonal
-    let firstDiag = board[0][0];
-    if (firstDiag !== null && board.every((row, i) => row[i] === firstDiag)) {
-      endGame = true;
-      return true;
-    }
-
-    // Anti diagonal
-    let firstAntiDiag = board[0][size - 1];
+    // Diagonals
     if (
-      firstAntiDiag !== null &&
-      board.every((row, i) => row[size - 1 - i] === firstAntiDiag)
-    ) {
-      endGame = true;
+      board[0][0] &&
+      board[0][0] === board[1][1] &&
+      board[1][1] === board[2][2]
+    )
       return true;
-    }
 
-    // Draw check
-    if (board.flat().every((cell) => cell !== null)) {
-      endGame = true;
-      return "draw";
-    }
+    if (
+      board[0][2] &&
+      board[0][2] === board[1][1] &&
+      board[1][1] === board[2][0]
+    )
+      return true;
 
     return false;
   };
 
-  const makeMove = (player, row, col) => {
-    if (row < 0 || row > 2 || col < 0 || col > 2) {
-      console.log("Invalid coordinates. Please enter 0, 1, or 2.");
-      return false;
-    }
-    if (board[row][col] !== null) {
-      console.log("Cell already occupied. Choose another.");
-      return false;
-    }
-    board[row][col] = player.symbol;
-    return true;
-  };
+  const isDraw = (board) => board.flat().every((cell) => cell !== null);
 
-  const promptMove = (player) => {
-    let input = prompt(
-      `${player.name} (${player.symbol}), enter your move as "row col" (0-2 each):`
-    );
-    if (input === null) {
-      console.log("Game aborted by user.");
-      endGame = true;
-      return null;
+  const handleCellClick = (row, col) => {
+    if (isGameOver) return;
+
+    if (createGameBoard.setCell(row, col, currentPlayer.symbol)) {
+      displayController.updateCell(row, col, currentPlayer.symbol);
+
+      const board = createGameBoard.getBoard();
+
+      if (checkWin(board)) {
+        displayController.showMessage(`${currentPlayer.symbol} wins!`);
+        isGameOver = true;
+      } else if (isDraw(board)) {
+        displayController.showMessage("It's a draw!");
+        isGameOver = true;
+      } else {
+        switchPlayer();
+      }
     }
-    let parts = input.trim().split(/\s+/);
-    if (parts.length !== 2) {
-      console.log("Invalid input format. Try again.");
-      return promptMove(player);
-    }
-    let row = parseInt(parts[0], 10);
-    let col = parseInt(parts[1], 10);
-    if (isNaN(row) || isNaN(col)) {
-      console.log("Invalid numbers. Try again.");
-      return promptMove(player);
-    }
-    return [row, col];
   };
 
   const startGame = () => {
-    console.clear();
-    console.log("Tic-Tac-Toe game started!");
-    printBoard();
-
-    while (!endGame) {
-      let currentPlayer =
-        turn === "player1" ? player1Controller : player2Controller;
-
-      let move = promptMove(currentPlayer);
-      if (endGame) break; // if aborted
-
-      if (!makeMove(currentPlayer, move[0], move[1])) {
-        continue; // invalid move, retry same player
-      }
-
-      printBoard();
-
-      let result = checkWin();
-      if (result === true) {
-        console.log(`🎉 ${currentPlayer.name} (${currentPlayer.symbol}) wins!`);
-      } else if (result === "draw") {
-        console.log("It's a draw!");
-      }
-
-      if (endGame) break;
-
-      turn = turn === "player1" ? "player2" : "player1";
-    }
-
-    console.log("Game over.");
+    createGameBoard.reset();
+    displayController.clearBoard();
+    displayController.showMessage("");
+    isGameOver = false;
+    currentPlayer = player1;
   };
 
-  return {
-    startGame,
-  };
-}
+  // Bind UI events
+  displayController.bindCellClick(handleCellClick);
+  displayController.newGameButton.addEventListener("click", startGame);
 
-// Initialize and start
-let gameBoard = createGameBoard();
-let player1 = createPlayer("Mohamed", "X");
-let player2 = createPlayer("Ali", "O");
+  return { startGame };
+})();
 
-let gameController = createGameController(gameBoard, player1, player2);
+// Start first game
 gameController.startGame();
