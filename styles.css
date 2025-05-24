@@ -18,6 +18,9 @@
   padding: 0;
 }
 
+.message {
+  font-size: 5rem;
+}
 body {
   background-color: var(--primary-bg);
   color: var(--text-color);

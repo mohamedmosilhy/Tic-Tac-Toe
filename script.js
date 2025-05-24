@@ -33,6 +33,9 @@ const displayController = (() => {
   const newGameButton = document.querySelector(".new-game-button");
   const cells = Array.from(document.querySelectorAll(".grid-cell"));
   const message = document.querySelector(".message");
+  const player1_score = document.querySelector(".player1-score .score");
+  const player2_score = document.querySelector(".player2-score .score");
+  const draw = document.querySelector(".draw .score");
 
   const clearBoard = () => {
     cells.forEach((cell) => (cell.textContent = ""));
@@ -56,7 +59,24 @@ const displayController = (() => {
     if (message) message.textContent = text;
   };
 
-  return { newGameButton, clearBoard, updateCell, bindCellClick, showMessage };
+  const updateScores = (text, player) => {
+    if (player === "player1") {
+      player1_score.textContent = text;
+    } else if (player === "player2") {
+      player2_score.textContent = text;
+    } else {
+      draw.textContent = text;
+    }
+  };
+
+  return {
+    newGameButton,
+    clearBoard,
+    updateCell,
+    bindCellClick,
+    showMessage,
+    updateScores,
+  };
 })();
 
 // Game Controller Module
@@ -65,6 +85,9 @@ const gameController = (() => {
   const player2 = createPlayer("O");
   let currentPlayer = player1;
   let isGameOver = false;
+  let player1Score = 0;
+  let player2Score = 0;
+  let draw = 0;
 
   const switchPlayer = () => {
     currentPlayer = currentPlayer === player1 ? player2 : player1;
@@ -119,13 +142,33 @@ const gameController = (() => {
       if (checkWin(board)) {
         displayController.showMessage(`${currentPlayer.symbol} wins!`);
         isGameOver = true;
+        if (currentPlayer === player1) {
+          player1Score += 1;
+          displayController.updateScores(player1Score, "player1");
+        } else {
+          player2Score += 1;
+          displayController.updateScores(player2Score, "player2");
+        }
+        reset_after_win();
       } else if (isDraw(board)) {
         displayController.showMessage("It's a draw!");
         isGameOver = true;
+        draw += 1;
+        displayController.updateScores(draw, "draw");
+        reset_after_win();
       } else {
         switchPlayer();
       }
     }
+  };
+  const reset_after_win = () => {
+    setTimeout(() => {
+      createGameBoard.reset();
+      displayController.clearBoard();
+      displayController.showMessage("");
+      isGameOver = false;
+      currentPlayer = player1;
+    }, 1000);
   };
 
   const startGame = () => {
@@ -134,6 +177,9 @@ const gameController = (() => {
     displayController.showMessage("");
     isGameOver = false;
     currentPlayer = player1;
+    displayController.updateScores(0, "player1");
+    displayController.updateScores(0, "player2");
+    displayController.updateScores(0, "draw");
   };
 
   // Bind UI events
